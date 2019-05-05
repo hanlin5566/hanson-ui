@@ -12,7 +12,8 @@ module.exports = {
     proxyTable: {
       '/': {
         // target: process.env.BASE_API,
-        target: 'http://192.168.1.16:8800',
+        //TODO：转发后端的IP地址
+        target: 'http://localhost:8800',
         changeOrigin: true,
         pathRewrite: {
           '^/': '/'

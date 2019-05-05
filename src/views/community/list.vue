@@ -27,12 +27,12 @@
       <!--条件按钮-->
       <div class="search">
         <el-button type="primary" size="mini" icon="el-icon-search" @click="search">搜索</el-button>
-        <el-button type="default" size="mini" icon="el-icon-refresh" @click="reset">重置</el-button>
+        <el-button type="default" size="mini" icon="el-icon-refresh" @click="resetSearch">重置</el-button>
       </div>
     </div>
     <!--工具按钮-->
     <div class="toolbar_container">
-      <el-button type="success" size="small" icon="el-icon-plus" @click="add">新增</el-button>
+      <el-button type="success" size="small" icon="el-icon-plus" @click="handleCreate">新增</el-button>
       <el-button type="primary" size="small" icon="el-icon-download" @click="handleDownload">导出</el-button>
     </div>
     <!--列表-->
@@ -95,34 +95,46 @@
     <!--新增&修改弹窗-->
     <div class="editor-container">
       <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
-        <!--ref="dataForm"-->
-        <el-form :rules="validateForm" :model="temp" label-position="left" label-width="70px" style="width: 400px; margin-left:50px;">
-          <el-form-item :label="$t('table.type')" prop="type">
-            <el-select v-model="temp.type" class="filter-item" placeholder="Please select">
-              <el-option v-for="item in calendarTypeOptions" :key="item.key" :label="item.display_name" :value="item.key" />
+        <el-form ref="formData" :rules="validateForm" :model="formData" label-position="left" label-width="120px" style="width: 400px; margin-left:70px;">
+          <el-form-item label="开发商">
+            <el-input v-model="formData.company"></el-input>
+          </el-form-item>
+          <el-form-item label="第三方主键" prop="thirdRecordId">
+            <el-input v-model="formData.thirdRecordId"></el-input>
+          </el-form-item>
+          <el-form-item label="品牌方">
+            <el-input v-model="formData.companyFriendly"></el-input>
+          </el-form-item>
+          <el-form-item label="项目全称">
+            <el-input v-model="formData.programName"></el-input>
+          </el-form-item>
+          <el-form-item label="项目简称">
+            <el-input v-model="formData.programNameFriendly"></el-input>
+          </el-form-item>
+         <el-form-item label="市区">
+            <el-select v-model="formData.district" class="filter-item">
+              <el-option v-for="item in selectArray" :key="item.code" :label="item.text" :value="item.name" />
             </el-select>
           </el-form-item>
-          <el-form-item :label="$t('table.date')" prop="timestamp">
-            <el-date-picker v-model="temp.timestamp" type="datetime" placeholder="Please pick a date" />
+          <el-form-item label="预售日期" prop="salesDate">
+            <el-date-picker v-model="formData.salesDate" type="date" placeholder="Please pick a date" />
           </el-form-item>
-          <el-form-item :label="$t('table.title')" prop="title">
-            <el-input v-model="temp.title" />
+          <el-form-item label="项目地址">
+            <el-input v-model="formData.programLocaltion" />
           </el-form-item>
-          <el-form-item :label="$t('table.status')">
-            <el-select v-model="temp.status" class="filter-item" placeholder="Please select">
-              <el-option v-for="item in statusOptions" :key="item" :label="item" :value="item" />
-            </el-select>
+          <el-form-item label="建筑栋数" >
+            <el-input-number v-model="formData.buildCount" :min="1" :max="999" ></el-input-number>
           </el-form-item>
-          <el-form-item :label="$t('table.importance')">
-            <el-rate v-model="temp.importance" :colors="['#99A9BF', '#F7BA2A', '#FF9900']" :max="3" style="margin-top:8px;" />
+          <el-form-item label="楼盘描述">
+            <el-input v-model="formData.programDescription" />
           </el-form-item>
-          <el-form-item :label="$t('table.remark')">
-            <el-input v-model="temp.remark" :autosize="{ minRows: 2, maxRows: 4}" type="textarea" placeholder="Please input" />
+          <el-form-item label="备注">
+            <el-input v-model="formData.remark" :autosize="{ minRows: 2, maxRows: 4}" type="textarea" placeholder="Please input" />
           </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
           <el-button @click="dialogFormVisible = false">取消</el-button>
-          <el-button type="primary" @click="dialogStatus==='create'?createData():updateData()">确定</el-button>
+          <el-button type="primary" @click="dialogStatus==='create'?save():update()">确定</el-button>
         </div>
       </el-dialog>
     </div>
@@ -154,12 +166,17 @@
         /*弹窗form相关*/
         formData: {
           id: undefined,
-          importance: 1,
-          remark: '',
-          timestamp: new Date(),
-          title: '',
-          type: '',
-          status: 'published'
+          thirdRecordId: undefined,
+          company: '',
+          companyFriendly: '',
+          programName: '',
+          programNameFriendly: '',
+          programLocaltion: '',
+          programDescription: '',
+          district: '',
+          buildCount: 0,
+          salesDate: '',
+          remark: ''
         },
         dialogStatus: '',//弹窗状态
         dialogFormVisible: false,//弹窗是否隐藏
@@ -168,11 +185,10 @@
           update: '修改',
           create: '新增'
         },
-        /*表单验证*/
+        /*表单验证 在item上添加相应的prop="下面json中的name规则"*/
         validateForm: {
-          type: [{ required: true, message: 'type is required', trigger: 'change' }],
-          timestamp: [{ type: 'date', required: true, message: 'timestamp is required', trigger: 'change' }],
-          title: [{ required: true, message: 'title is required', trigger: 'blur' }]
+          salesDate: [{ type: 'date', required: true, message: 'salesDate is required', trigger: 'change' }],
+          thirdRecordId: [{required: true,message: '请输入第三方ID',trigger: 'blur'},{pattern:/^[0-9]*$/, message: '第三方ID只能为数字'}],
         },
       };
     },
@@ -196,32 +212,83 @@
         this.listQuery.offset = 0;
         this.getList();
       },
-      add() {
-        this.$message({
-          type: 'error',
-          message: 'warning!'
+      save() {
+        this.$refs['formData'].validate((valid) => {
+          if (valid) {
+            save(this.formData).then(() => {
+              this.dialogFormVisible = false
+              this.$notify({
+                title: '成功',
+                message: '创建成功',
+                type: 'success',
+                duration: 2000
+              });
+              this.getList();
+            })
+          }
+        });
+      },
+      update() {
+        this.$refs['formData'].validate((valid) => {
+          if (valid) {
+            update(this.formData).then(() => {
+              this.dialogFormVisible = false
+              this.$notify({
+                title: '成功',
+                message: '更新成功',
+                type: 'success',
+                duration: 2000
+              });
+              this.getList();
+            })
+          }
         });
       },
       handleDownload() {
         this.$message({
           type: 'error',
-          message: 'warning!'
+          message: '待开发!'
         });
       },
-      reset() {
+      resetSearch() {
         this.listQuery.offset = 0;
         this.listQuery.thirdRecordId = null;
         this.listQuery.company = null;
         this.listQuery.district = null;
         this.getList();
       },
+      /*清空formdata数据*/
+      resetFormData() {
+       this.formData = {
+          id: undefined,
+          company: '',
+          companyFriendly: '',
+          programName: '',
+          programNameFriendly: '',
+          programLocaltion: '',
+          programDescription: '',
+          district: '',
+          buildCount: 0,
+          salesDate: '',
+          remark: ''
+        }
+      },
+      /*页面按钮事件*/
+      handleCreate() {
+        this.resetFormData();
+        this.dialogStatus = 'create';
+        this.dialogFormVisible = true;
+        this.$nextTick(() => {
+          this.$refs['formData'].clearValidate()
+        })
+      },
       handleUpdate(row) {
-        this.temp = Object.assign({}, row) // copy obj
-        this.temp.timestamp = new Date(this.temp.timestamp)
+        this.formData = Object.assign({}, row) // copy obj
+        this.formData.timestamp = new Date(this.formData.timestamp)
         this.dialogStatus = 'update'
         this.dialogFormVisible = true
         this.$nextTick(() => {
-          this.$refs['dataForm'].clearValidate()
+          this.$refs['formData'].clearValidate()
         })
       },
       handleDelete(row) {

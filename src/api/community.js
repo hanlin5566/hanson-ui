@@ -22,9 +22,7 @@ export function save(params) {
   return request({
     url: '/communitys',
     method: 'post',
-    params: {
-      params
-    }
+    data: params
   })
 }
 
